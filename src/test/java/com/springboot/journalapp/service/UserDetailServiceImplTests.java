@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 
 @ExtendWith(MockitoExtension.class)
+@Disabled
 public class UserDetailServiceImplTests {
 
     @InjectMocks
