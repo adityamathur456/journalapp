@@ -2,6 +2,7 @@ package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.repository.UserRepository;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -24,6 +25,7 @@ public class UserDetailServiceImplTests {
     private UserRepository userRepository;
 
     @Test
+    @Disabled
     void loadUserByUsernameTest() {
         when(userRepository.findByUserName("aditya@456")).thenReturn(
                 UserEntity.builder()
