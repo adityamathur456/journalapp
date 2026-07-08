@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: journalApp
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}/journaldb
+      auto-index-creation: true
+  config:
+    import: optional:application-secret.yml
+
+server:
+  port: 8080

@@ -2,6 +2,7 @@ package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.api.WeatherResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Slf4j
 @Service
 public class WeatherService {
-    private static final String API_KEY = "5653dabb752e572017f68d8a7443a938";
+    @Value("${weather.api.key}")
+    private String apiKey;
     private static final String URL = "http://api.weatherstack.com/current?access_key=%s&query=%s";
 
     private final RestTemplate restTemplate;
@@ -24,7 +26,7 @@ public class WeatherService {
     public WeatherResponse.Current getWeather(String city) {
         String url = UriComponentsBuilder
                 .fromUriString(URL)
-                .queryParam("access_key", API_KEY)
+                .queryParam("access_key", apiKey)
                 .queryParam("query", city)
                 .toUriString();
         try{

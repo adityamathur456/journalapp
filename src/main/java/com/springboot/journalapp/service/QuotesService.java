@@ -1,6 +1,7 @@
 package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.api.QuotesResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpEntity;
@@ -10,7 +11,8 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 public class QuotesService {
-    private static final String API_KEY = "oRSlp0nWsqYjQXUX4i9htAMdYCsaZo9olUOY1SzW";
+    @Value("${quotes.api.key}")
+    private String apiKey;
 
     private static final String URL = "https://api.api-ninjas.com/v2/randomquotes?categories=success,wisdom";
 
@@ -22,7 +24,7 @@ public class QuotesService {
 
     public QuotesResponse getRandomQuotes() {
         HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        headers.set("X-Api-Key", API_KEY);
+        headers.set("X-Api-Key", apiKey);
 
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         ResponseEntity<QuotesResponse[]> response = restTemplate.exchange(
