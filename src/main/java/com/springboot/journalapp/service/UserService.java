@@ -7,13 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
 @Slf4j
-@Component
+@Service
 public class UserService {
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();

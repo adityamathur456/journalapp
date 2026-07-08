@@ -1,7 +1,10 @@
 package com.springboot.journalapp.controller;
 
+import com.springboot.journalapp.api.GreetingResponse;
 import com.springboot.journalapp.entity.UserEntity;
+import com.springboot.journalapp.service.QuotesService;
 import com.springboot.journalapp.service.UserService;
+import com.springboot.journalapp.service.WeatherService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,16 +15,27 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/user")
 public class UserController {
     private final UserService userService;
+    private final WeatherService weatherService;
 
-    public UserController(UserService userService) {
+    private final QuotesService quotesService;
+
+    public UserController(UserService userService, WeatherService weatherService, QuotesService quotesService) {
         this.userService = userService;
+        this.weatherService = weatherService;
+        this.quotesService = quotesService;
     }
 
     @GetMapping
-    public ResponseEntity<UserEntity> getUserData() {
+    public ResponseEntity<GreetingResponse> greetingUser() {
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = userService.findByUserName(authentication.getName());
-        return ResponseEntity.ok(user);
+
+        GreetingResponse response = new GreetingResponse();
+
+        response.setWeather(weatherService.getWeather("New York"));
+        response.setQuote(quotesService.getRandomQuotes());
+
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping
