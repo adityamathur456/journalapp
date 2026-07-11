@@ -1,43 +1,59 @@
 package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.api.QuotesResponse;
+import com.springboot.journalapp.cache.AppCache;
+import com.springboot.journalapp.enums.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Service
 public class QuotesService {
+
     @Value("${quotes.api.key}")
     private String apiKey;
 
-    private static final String URL = "https://api.api-ninjas.com/v2/randomquotes?categories=success,wisdom";
+    private final AppCache appCache;
 
     private final RestTemplate restTemplate;
 
-    public QuotesService(RestTemplate restTemplate) {
+    public QuotesService(RestTemplate restTemplate, AppCache appCache) {
         this.restTemplate = restTemplate;
+        this.appCache = appCache;
     }
 
     public QuotesResponse getRandomQuotes() {
-        HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        HttpHeaders headers = new HttpHeaders();
         headers.set("X-Api-Key", apiKey);
-
         HttpEntity<Void> entity = new HttpEntity<>(headers);
-        ResponseEntity<QuotesResponse[]> response = restTemplate.exchange(
-                URL,
-                HttpMethod.GET,
-                entity,
-                QuotesResponse[].class
-        );
+        String url = appCache.getValue(Keys.QUOTES_API);
 
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody().length > 0) {
-            return  response.getBody()[0];
+        try {
+            log.info("Calling Quotes API");
+            ResponseEntity<QuotesResponse[]> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    QuotesResponse[].class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody().length > 0) {
+                log.info("Quotes API responded successfully.");
+                return  response.getBody()[0];
+            }
+
+        } catch (RestClientException e) {
+            log.error("Error while calling Quotes API", e);
         }
 
         return null;
     }
+
 }
