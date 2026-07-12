@@ -35,4 +35,6 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          QUOTES_API_KEY: ${{ secrets.QUOTES_API_KEY }}
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=adityamathur456_journalapp
