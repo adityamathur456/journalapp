@@ -18,24 +18,24 @@ class UserRepositoryTest {
 
     @BeforeEach
     void cleanDatabase() {
-        userRepository.deleteAll();
+        userRepository.deleteByUserName("testUser");
     }
 
     @Test
     void testFindByUserName() {
 
         UserEntity user = UserEntity.builder()
-                .userName("aditya")
+                .userName("testUser")
                 .password("password")
                 .roles(List.of("USER"))
                 .build();
 
         userRepository.save(user);
 
-        UserEntity found = userRepository.findByUserName("aditya");
+        UserEntity found = userRepository.findByUserName("testUser");
 
         assertNotNull(found);
-        assertEquals("aditya", found.getUserName());
+        assertEquals("testUser", found.getUserName());
         assertEquals("password", found.getPassword());
     }
 
