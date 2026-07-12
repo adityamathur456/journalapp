@@ -2,22 +2,21 @@ package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.repository.UserRepository;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.ArrayList;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.when;
-
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled
-public class UserDetailServiceImplTests {
+class UserDetailServiceImplTests {
 
     @InjectMocks
     private UserDetailServiceImpl userDetailService;
@@ -26,18 +25,44 @@ public class UserDetailServiceImplTests {
     private UserRepository userRepository;
 
     @Test
-    @Disabled
-    void loadUserByUsernameTest() {
-        when(userRepository.findByUserName("aditya@456")).thenReturn(
-                UserEntity.builder()
-                        .userName("aditya@456")
-                        .password("aditya4838")
-                        .roles(new ArrayList<>())
-                        .build()
+    void loadUserByUsername_ShouldReturnUserDetails() {
+
+        UserEntity user = UserEntity.builder()
+                .userName("aditya@456")
+                .password("encodedPassword")
+                .roles(List.of("USER"))
+                .build();
+
+        when(userRepository.findByUserName("aditya@456"))
+                .thenReturn(user);
+
+        UserDetails userDetails =
+                userDetailService.loadUserByUsername("aditya@456");
+
+        assertNotNull(userDetails);
+        assertEquals("aditya@456", userDetails.getUsername());
+        assertEquals("encodedPassword", userDetails.getPassword());
+
+        assertTrue(
+                userDetails.getAuthorities()
+                        .stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_USER"))
         );
 
-        UserDetails user = userDetailService.loadUserByUsername("aditya@456");
-        System.out.println(user.getUsername() +" "+ user.getPassword());
-        assertNotNull(user);
+        verify(userRepository).findByUserName("aditya@456");
+    }
+
+    @Test
+    void loadUserByUsername_ShouldThrowException_WhenUserNotFound() {
+
+        when(userRepository.findByUserName("unknown"))
+                .thenReturn(null);
+
+        assertThrows(
+                UsernameNotFoundException.class,
+                () -> userDetailService.loadUserByUsername("unknown")
+        );
+
+        verify(userRepository).findByUserName("unknown");
     }
 }

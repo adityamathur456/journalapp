@@ -1,17 +1,19 @@
-package com.springboot.journalapp.repository;
+package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.entity.UserEntity;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-public class UserRepositoryImpl {
+@Service
+public class UserRepositoryCriteria {
 
     private final MongoTemplate mongoTemplate;
 
-    public UserRepositoryImpl(MongoTemplate mongoTemplate) {
+    public UserRepositoryCriteria(MongoTemplate mongoTemplate) {
         this.mongoTemplate = mongoTemplate;
     }
 

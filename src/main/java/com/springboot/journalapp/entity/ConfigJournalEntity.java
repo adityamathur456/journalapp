@@ -4,9 +4,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "config_journal")
 @Data
 @NoArgsConstructor
+@Document(collection = "config_journal")
 public class ConfigJournalEntity {
 
     private String key;
