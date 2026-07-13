@@ -1,6 +1,6 @@
 package com.springboot.journalapp.service;
 
-import com.springboot.journalapp.api.WeatherResponse;
+import com.springboot.journalapp.response.WeatherResponse;
 import com.springboot.journalapp.cache.AppCache;
 import com.springboot.journalapp.enums.Keys;
 import lombok.extern.slf4j.Slf4j;

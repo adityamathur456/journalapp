@@ -1,6 +1,6 @@
 package com.springboot.journalapp.controller;
 
-import com.springboot.journalapp.api.GreetingResponse;
+import com.springboot.journalapp.response.GreetingResponse;
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.service.QuotesService;
 import com.springboot.journalapp.service.UserService;

@@ -2,7 +2,6 @@ package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.entity.UserEntity;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -23,18 +22,12 @@ class UserServiceTests {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    @BeforeEach
-    void cleanBefore() {
-        userService.deleteUser("Michael");
-        userService.deleteUser("Roman");
-        userService.deleteUser("TestUser");
-    }
-
     @AfterEach
     void cleanAfter() {
         userService.deleteUser("Michael");
         userService.deleteUser("Roman");
         userService.deleteUser("TestUser");
+        userService.deleteUser("UpdatedUser");
     }
 
     @ParameterizedTest

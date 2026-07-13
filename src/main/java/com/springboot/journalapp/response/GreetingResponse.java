@@ -1,4 +1,4 @@
-package com.springboot.journalapp.api;
+package com.springboot.journalapp.response;
 
 import lombok.Getter;
 import lombok.Setter;

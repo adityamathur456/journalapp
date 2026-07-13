@@ -1,6 +1,6 @@
 package com.springboot.journalapp.service;
 
-import com.springboot.journalapp.api.QuotesResponse;
+import com.springboot.journalapp.response.QuotesResponse;
 import com.springboot.journalapp.cache.AppCache;
 import com.springboot.journalapp.enums.Keys;
 import lombok.extern.slf4j.Slf4j;

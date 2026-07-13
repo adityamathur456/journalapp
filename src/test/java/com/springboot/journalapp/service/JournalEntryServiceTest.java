@@ -36,7 +36,7 @@ class JournalEntryServiceTest {
     @BeforeEach
     void setUp() {
         user = new UserEntity();
-        user.setUserName("aditya");
+        user.setUserName("test");
         user.setJournalEntryList(new ArrayList<>());
 
         entry = new JournalEntry();
@@ -48,11 +48,11 @@ class JournalEntryServiceTest {
     @Test
     void saveEntry_ShouldSaveEntryAndUpdateUser() {
 
-        when(userService.findByUserName("aditya")).thenReturn(user);
+        when(userService.findByUserName("test")).thenReturn(user);
         when(journalEntryRepository.save(any(JournalEntry.class))).thenReturn(entry);
 
         JournalEntry result =
-                journalEntryService.saveEntry("aditya", entry);
+                journalEntryService.saveEntry("test", entry);
 
         assertNotNull(result);
         assertEquals(1, user.getJournalEntryList().size());
@@ -89,11 +89,11 @@ class JournalEntryServiceTest {
 
         user.getJournalEntryList().add(entry);
 
-        when(userService.findByUserName("aditya"))
+        when(userService.findByUserName("test"))
                 .thenReturn(user);
 
         boolean deleted =
-                journalEntryService.deleteById(entry.getId(), "aditya");
+                journalEntryService.deleteById(entry.getId(), "test");
 
         assertTrue(deleted);
 
@@ -104,11 +104,11 @@ class JournalEntryServiceTest {
     @Test
     void deleteById_ShouldReturnFalse_WhenEntryNotOwned() {
 
-        when(userService.findByUserName("aditya"))
+        when(userService.findByUserName("test"))
                 .thenReturn(user);
 
         boolean deleted =
-                journalEntryService.deleteById(new ObjectId(), "aditya");
+                journalEntryService.deleteById(new ObjectId(), "test");
 
         assertFalse(deleted);
 

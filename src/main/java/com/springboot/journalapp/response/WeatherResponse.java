@@ -1,4 +1,4 @@
-package com.springboot.journalapp.api;
+package com.springboot.journalapp.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
