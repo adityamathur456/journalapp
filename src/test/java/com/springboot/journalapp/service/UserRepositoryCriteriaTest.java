@@ -2,7 +2,6 @@ package com.springboot.journalapp.service;
 
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.repository.UserRepository;
-import com.springboot.journalapp.service.UserRepositoryCriteria;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

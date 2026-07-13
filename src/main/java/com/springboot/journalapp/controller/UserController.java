@@ -28,11 +28,9 @@ public class UserController {
     @GetMapping
     public ResponseEntity<GreetingResponse> greetingUser() {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
         GreetingResponse response = new GreetingResponse();
 
-        response.setWeather(weatherService.getWeather("New York"));
+        response.setWeather(weatherService.getWeather("Mumbai"));
         response.setQuote(quotesService.getRandomQuotes());
 
         return ResponseEntity.ok(response);
