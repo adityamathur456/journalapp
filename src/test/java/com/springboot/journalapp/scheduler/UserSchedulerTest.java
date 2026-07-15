@@ -2,13 +2,12 @@ package com.springboot.journalapp.scheduler;
 
 import com.springboot.journalapp.entity.JournalEntry;
 import com.springboot.journalapp.entity.UserEntity;
+import com.springboot.journalapp.enums.Sentiment;
 import com.springboot.journalapp.service.EmailService;
-import com.springboot.journalapp.service.SentimentAnalysisService;
 import com.springboot.journalapp.service.UserRepositoryCriteria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,8 +16,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,9 +28,6 @@ class UserSchedulerTest {
 
     @Mock
     private UserRepositoryCriteria userRepositoryCriteria;
-
-    @Mock
-    private SentimentAnalysisService sentimentAnalysisService;
 
     @InjectMocks
     private UserScheduler userScheduler;
@@ -45,76 +41,72 @@ class UserSchedulerTest {
     }
 
     @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldSendMail_WhenRecentEntriesExist() {
+    void fetchUserAndSendSentimentAnalysisMail_ShouldSendMail_WhenRecentSentimentsExist() {
 
         JournalEntry entry = new JournalEntry();
-        entry.setContent("I am happy");
         entry.setDate(LocalDateTime.now().minusDays(2));
+        entry.setSentiment(Sentiment.HAPPY);
 
         user.setJournalEntryList(List.of(entry));
 
         when(userRepositoryCriteria.getUserForSA()).thenReturn(List.of(user));
-        when(sentimentAnalysisService.getSentiment("I am happy"))
-                .thenReturn("Positive");
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
         verify(userRepositoryCriteria).getUserForSA();
-        verify(sentimentAnalysisService).getSentiment("I am happy");
-        verify(emailService)
-                .sendEmail("test@test.com", "Sentiment for 7 days", "Positive");
+        verify(emailService).sendEmail(
+                "test@test.com",
+                "Sentiment for last 7 days",
+                "HAPPY"
+        );
     }
 
     @Test
     void fetchUserAndSendSentimentAnalysisMail_ShouldIgnoreOldEntries() {
 
-        JournalEntry entry = new JournalEntry();
-        entry.setContent("Old Entry");
-        entry.setDate(LocalDateTime.now().minusDays(10));
+        JournalEntry oldEntry = new JournalEntry();
+        oldEntry.setDate(LocalDateTime.now().minusDays(10));
+        oldEntry.setSentiment(Sentiment.HAPPY);
 
-        user.setJournalEntryList(List.of(entry));
+        user.setJournalEntryList(List.of(oldEntry));
 
         when(userRepositoryCriteria.getUserForSA()).thenReturn(List.of(user));
-        when(sentimentAnalysisService.getSentiment("")).thenReturn("");
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
-        verify(sentimentAnalysisService).getSentiment("");
-        verify(emailService)
-                .sendEmail("test@test.com", "Sentiment for 7 days", "");
+        verifyNoInteractions(emailService);
     }
 
     @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldConcatenateRecentEntries() {
+    void fetchUserAndSendSentimentAnalysisMail_ShouldSendMostFrequentSentiment() {
 
-        JournalEntry entry1 = new JournalEntry();
-        entry1.setContent("Good");
-        entry1.setDate(LocalDateTime.now().minusDays(1));
+        JournalEntry e1 = new JournalEntry();
+        e1.setDate(LocalDateTime.now().minusDays(1));
+        e1.setSentiment(Sentiment.HAPPY);
 
-        JournalEntry entry2 = new JournalEntry();
-        entry2.setContent("Bad");
-        entry2.setDate(LocalDateTime.now().minusDays(3));
+        JournalEntry e2 = new JournalEntry();
+        e2.setDate(LocalDateTime.now().minusDays(2));
+        e2.setSentiment(Sentiment.HAPPY);
 
-        JournalEntry oldEntry = new JournalEntry();
-        oldEntry.setContent("Ignore");
-        oldEntry.setDate(LocalDateTime.now().minusDays(20));
+        JournalEntry e3 = new JournalEntry();
+        e3.setDate(LocalDateTime.now().minusDays(3));
+        e3.setSentiment(Sentiment.SAD);
 
-        user.setJournalEntryList(List.of(entry1, entry2, oldEntry));
+        JournalEntry old = new JournalEntry();
+        old.setDate(LocalDateTime.now().minusDays(20));
+        old.setSentiment(Sentiment.ANGRY);
+
+        user.setJournalEntryList(List.of(e1, e2, e3, old));
 
         when(userRepositoryCriteria.getUserForSA()).thenReturn(List.of(user));
-        when(sentimentAnalysisService.getSentiment(anyString()))
-                .thenReturn("Mixed");
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-
-        verify(sentimentAnalysisService).getSentiment(captor.capture());
-
-        assertEquals("Good Bad", captor.getValue());
-
-        verify(emailService)
-                .sendEmail("test@test.com", "Sentiment for 7 days", "Mixed");
+        verify(emailService).sendEmail(
+                "test@test.com",
+                "Sentiment for last 7 days",
+                "HAPPY"
+        );
     }
 
     @Test
@@ -126,39 +118,61 @@ class UserSchedulerTest {
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
         verify(userRepositoryCriteria).getUserForSA();
-        verifyNoInteractions(sentimentAnalysisService);
         verifyNoInteractions(emailService);
     }
 
     @Test
     void fetchUserAndSendSentimentAnalysisMail_ShouldProcessMultipleUsers() {
 
-        UserEntity user2 = new UserEntity();
-        user2.setEmail("second@test.com");
+        UserEntity secondUser = new UserEntity();
+        secondUser.setEmail("second@test.com");
 
         JournalEntry e1 = new JournalEntry();
-        e1.setContent("First");
         e1.setDate(LocalDateTime.now());
+        e1.setSentiment(Sentiment.HAPPY);
 
         JournalEntry e2 = new JournalEntry();
-        e2.setContent("Second");
         e2.setDate(LocalDateTime.now());
+        e2.setSentiment(Sentiment.SAD);
 
         user.setJournalEntryList(List.of(e1));
-        user2.setJournalEntryList(List.of(e2));
+        secondUser.setJournalEntryList(List.of(e2));
 
         when(userRepositoryCriteria.getUserForSA())
-                .thenReturn(List.of(user, user2));
-
-        when(sentimentAnalysisService.getSentiment(anyString()))
-                .thenReturn("Positive");
+                .thenReturn(List.of(user, secondUser));
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
-        verify(emailService, times(2))
-                .sendEmail(anyString(), eq("Sentiment for 7 days"), eq("Positive"));
+        verify(emailService).sendEmail(
+                "test@test.com",
+                "Sentiment for last 7 days",
+                "HAPPY"
+        );
 
-        verify(sentimentAnalysisService, times(2))
-                .getSentiment(anyString());
+        verify(emailService).sendEmail(
+                "second@test.com",
+                "Sentiment for last 7 days",
+                "SAD"
+        );
+
+        verify(emailService, times(2))
+                .sendEmail(anyString(), eq("Sentiment for last 7 days"), anyString());
+    }
+
+    @Test
+    void fetchUserAndSendSentimentAnalysisMail_ShouldIgnoreNullSentiments() {
+
+        JournalEntry entry = new JournalEntry();
+        entry.setDate(LocalDateTime.now());
+        entry.setSentiment(null);
+
+        user.setJournalEntryList(List.of(entry));
+
+        when(userRepositoryCriteria.getUserForSA())
+                .thenReturn(List.of(user));
+
+        userScheduler.fetchUserAndSendSentimentAnalysisMail();
+
+        verifyNoInteractions(emailService);
     }
 }

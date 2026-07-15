@@ -1,5 +1,6 @@
 package com.springboot.journalapp.entity;
 
+import com.springboot.journalapp.enums.Sentiment;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 
@@ -38,12 +39,15 @@ class JournalEntryTest {
                 id,
                 "Title",
                 "Content",
-                now
-        );
+                now,
+                Sentiment.HAPPY
+                );
 
         assertEquals(id, entry.getId());
         assertEquals("Title", entry.getTitle());
         assertEquals("Content", entry.getContent());
+        assertEquals(Sentiment.HAPPY, entry.getSentiment());
+
         assertEquals(now, entry.getDate());
     }
 
@@ -53,8 +57,8 @@ class JournalEntryTest {
         ObjectId id = new ObjectId();
         LocalDateTime now = LocalDateTime.now();
 
-        JournalEntry entry1 = new JournalEntry(id, "Title", "Content", now);
-        JournalEntry entry2 = new JournalEntry(id, "Title", "Content", now);
+        JournalEntry entry1 = new JournalEntry(id, "Title", "Content", now, Sentiment.HAPPY);
+        JournalEntry entry2 = new JournalEntry(id, "Title", "Content", now, Sentiment.HAPPY);
 
         assertEquals(entry1, entry2);
         assertEquals(entry1.hashCode(), entry2.hashCode());
@@ -67,7 +71,8 @@ class JournalEntryTest {
                 new ObjectId(),
                 "Title",
                 "Content",
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                Sentiment.HAPPY
         );
 
         String result = entry.toString();
