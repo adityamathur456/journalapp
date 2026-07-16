@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.Duration;
+
 @Slf4j
 @Service
 public class WeatherService {
@@ -23,12 +25,23 @@ public class WeatherService {
 
     private final RestTemplate restTemplate;
 
-    public WeatherService(RestTemplate restTemplate, AppCache appCache) {
+    private final RedisService redisService;
+
+    public WeatherService(RestTemplate restTemplate, AppCache appCache, RedisService redisService) {
         this.restTemplate = restTemplate;
         this.appCache = appCache;
+        this.redisService = redisService;
     }
 
     public WeatherResponse.Current getWeather(String city) {
+        String key = "weather_of_" + city.trim().toLowerCase().replaceAll("\\s+", "");
+        WeatherResponse.Current weatherResponse = redisService.get(key, WeatherResponse.Current.class);
+
+        if (weatherResponse != null) {
+            log.info("Weather fetched from Redis for city: {}", city);
+            return weatherResponse;
+        }
+
         String url = UriComponentsBuilder
                 .fromUriString(appCache.getValue(Keys.WEATHER_API))
                 .queryParam("access_key", apiKey)
@@ -41,8 +54,9 @@ public class WeatherService {
             WeatherResponse body = response.getBody();
 
             if (response.getStatusCode().is2xxSuccessful() && body.getCurrent() != null) {
+                redisService.set(key, body.getCurrent(), Duration.ofMinutes(5));
                 log.info("Weather API responded successfully.");
-                return response.getBody().getCurrent();
+                return body.getCurrent();
             }
         } catch (RestClientException e) {
             log.error("Error while calling Weather API", e);

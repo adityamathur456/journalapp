@@ -30,7 +30,7 @@ public class UserController {
 
         GreetingResponse response = new GreetingResponse();
 
-        response.setWeather(weatherService.getWeather("Mumbai"));
+        response.setWeather(weatherService.getWeather("Bengaluru"));
         response.setQuote(quotesService.getRandomQuotes());
 
         return ResponseEntity.ok(response);
