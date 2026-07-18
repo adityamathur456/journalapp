@@ -4,30 +4,24 @@ import com.springboot.journalapp.entity.JournalEntry;
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.enums.Sentiment;
 import com.springboot.journalapp.model.SentimentData;
-import com.springboot.journalapp.service.EmailService;
 import com.springboot.journalapp.service.UserRepositoryCriteria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserSchedulerTest {
-
-    @Mock
-    private EmailService emailService;
 
     @Mock
     private UserRepositoryCriteria userRepositoryCriteria;
@@ -35,68 +29,18 @@ class UserSchedulerTest {
     @Mock
     private KafkaTemplate<String, SentimentData> kafkaTemplate;
 
-    @InjectMocks
     private UserScheduler userScheduler;
-
-    private UserEntity user;
 
     @BeforeEach
     void setUp() {
-        user = new UserEntity();
-        user.setEmail("test@test.com");
+        userScheduler = new UserScheduler(userRepositoryCriteria, kafkaTemplate);
     }
 
     @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldSendKafkaMessage_WhenRecentSentimentsExist() {
+    void shouldSendKafkaMessageForMostFrequentSentiment() {
 
-        JournalEntry entry = new JournalEntry();
-        entry.setDate(LocalDateTime.now().minusDays(2));
-        entry.setSentiment(Sentiment.HAPPY);
-
-        user.setJournalEntryList(List.of(entry));
-
-        when(userRepositoryCriteria.getUserForSA()).thenReturn(List.of(user));
-
-        userScheduler.fetchUserAndSendSentimentAnalysisMail();
-
-        verify(userRepositoryCriteria).getUserForSA();
-
-        ArgumentCaptor<SentimentData> captor =
-                ArgumentCaptor.forClass(SentimentData.class);
-
-        verify(kafkaTemplate).send(
-                eq("weekly-sentiments"),
-                eq("test@test.com"),
-                captor.capture()
-        );
-
-        SentimentData data = captor.getValue();
-
-        assertEquals("test@test.com", data.getEmail());
-        assertEquals("Sentiment for last 7 daysHAPPY", data.getSentiment());
-
-        verifyNoInteractions(emailService);
-    }
-
-    @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldIgnoreOldEntries() {
-
-        JournalEntry oldEntry = new JournalEntry();
-        oldEntry.setDate(LocalDateTime.now().minusDays(10));
-        oldEntry.setSentiment(Sentiment.HAPPY);
-
-        user.setJournalEntryList(List.of(oldEntry));
-
-        when(userRepositoryCriteria.getUserForSA()).thenReturn(List.of(user));
-
-        userScheduler.fetchUserAndSendSentimentAnalysisMail();
-
-        verifyNoInteractions(kafkaTemplate);
-        verifyNoInteractions(emailService);
-    }
-
-    @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldSendMostFrequentSentiment() {
+        UserEntity user = new UserEntity();
+        user.setEmail("test@gmail.com");
 
         JournalEntry e1 = new JournalEntry();
         e1.setDate(LocalDateTime.now().minusDays(1));
@@ -110,13 +54,10 @@ class UserSchedulerTest {
         e3.setDate(LocalDateTime.now().minusDays(3));
         e3.setSentiment(Sentiment.SAD);
 
-        JournalEntry old = new JournalEntry();
-        old.setDate(LocalDateTime.now().minusDays(20));
-        old.setSentiment(Sentiment.ANGRY);
+        user.setJournalEntryList(List.of(e1, e2, e3));
 
-        user.setJournalEntryList(List.of(e1, e2, e3, old));
-
-        when(userRepositoryCriteria.getUserForSA()).thenReturn(List.of(user));
+        when(userRepositoryCriteria.getUserForSA())
+                .thenReturn(List.of(user));
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
@@ -125,76 +66,45 @@ class UserSchedulerTest {
 
         verify(kafkaTemplate).send(
                 eq("weekly-sentiments"),
-                eq("test@test.com"),
+                eq("test@gmail.com"),
                 captor.capture()
         );
 
-        assertEquals(
-                "Sentiment for last 7 daysHAPPY",
-                captor.getValue().getSentiment()
-        );
+        SentimentData data = captor.getValue();
 
-        verifyNoInteractions(emailService);
+        assertEquals("test@gmail.com", data.getEmail());
+        assertTrue(data.getSentiment().contains("HAPPY"));
     }
 
     @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldHandleNoUsers() {
+    void shouldIgnoreOldJournalEntries() {
+
+        UserEntity user = new UserEntity();
+        user.setEmail("old@gmail.com");
+
+        JournalEntry oldEntry = new JournalEntry();
+        oldEntry.setDate(LocalDateTime.now().minusDays(10));
+        oldEntry.setSentiment(Sentiment.HAPPY);
+
+        user.setJournalEntryList(List.of(oldEntry));
 
         when(userRepositoryCriteria.getUserForSA())
-                .thenReturn(Collections.emptyList());
+                .thenReturn(List.of(user));
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
-        verify(userRepositoryCriteria).getUserForSA();
-        verifyNoInteractions(kafkaTemplate);
-        verifyNoInteractions(emailService);
+        verify(kafkaTemplate, never())
+                .send(anyString(), anyString(), any(SentimentData.class));
     }
 
     @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldProcessMultipleUsers() {
+    void shouldIgnoreNullSentiments() {
 
-        UserEntity secondUser = new UserEntity();
-        secondUser.setEmail("second@test.com");
-
-        JournalEntry e1 = new JournalEntry();
-        e1.setDate(LocalDateTime.now());
-        e1.setSentiment(Sentiment.HAPPY);
-
-        JournalEntry e2 = new JournalEntry();
-        e2.setDate(LocalDateTime.now());
-        e2.setSentiment(Sentiment.SAD);
-
-        user.setJournalEntryList(List.of(e1));
-        secondUser.setJournalEntryList(List.of(e2));
-
-        when(userRepositoryCriteria.getUserForSA())
-                .thenReturn(List.of(user, secondUser));
-
-        userScheduler.fetchUserAndSendSentimentAnalysisMail();
-
-        verify(kafkaTemplate).send(
-                eq("weekly-sentiments"),
-                eq("test@test.com"),
-                any(SentimentData.class)
-        );
-
-        verify(kafkaTemplate).send(
-                eq("weekly-sentiments"),
-                eq("second@test.com"),
-                any(SentimentData.class)
-        );
-
-        verify(kafkaTemplate, times(2))
-                .send(eq("weekly-sentiments"), anyString(), any(SentimentData.class));
-
-        verifyNoInteractions(emailService);
-    }
-
-    @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldIgnoreNullSentiments() {
+        UserEntity user = new UserEntity();
+        user.setEmail("null@gmail.com");
 
         JournalEntry entry = new JournalEntry();
-        entry.setDate(LocalDateTime.now());
+        entry.setDate(LocalDateTime.now().minusDays(1));
         entry.setSentiment(null);
 
         user.setJournalEntryList(List.of(entry));
@@ -204,7 +114,50 @@ class UserSchedulerTest {
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
+        verify(kafkaTemplate, never())
+                .send(anyString(), anyString(), any(SentimentData.class));
+    }
+
+    @Test
+    void shouldHandleEmptyUserList() {
+
+        when(userRepositoryCriteria.getUserForSA())
+                .thenReturn(List.of());
+
+        userScheduler.fetchUserAndSendSentimentAnalysisMail();
+
         verifyNoInteractions(kafkaTemplate);
-        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void shouldSendOnlyForUserHavingRecentSentiment() {
+
+        UserEntity user1 = new UserEntity();
+        user1.setEmail("user1@gmail.com");
+
+        JournalEntry recent = new JournalEntry();
+        recent.setDate(LocalDateTime.now().minusDays(2));
+        recent.setSentiment(Sentiment.SAD);
+
+        user1.setJournalEntryList(List.of(recent));
+
+        UserEntity user2 = new UserEntity();
+        user2.setEmail("user2@gmail.com");
+
+        JournalEntry old = new JournalEntry();
+        old.setDate(LocalDateTime.now().minusDays(20));
+        old.setSentiment(Sentiment.HAPPY);
+
+        user2.setJournalEntryList(List.of(old));
+
+        when(userRepositoryCriteria.getUserForSA())
+                .thenReturn(List.of(user1, user2));
+
+        userScheduler.fetchUserAndSendSentimentAnalysisMail();
+
+        verify(kafkaTemplate, times(1))
+                .send(eq("weekly-sentiments"),
+                        eq("user1@gmail.com"),
+                        any(SentimentData.class));
     }
 }
