@@ -50,4 +50,6 @@ jobs:
           QUOTES_API_KEY: ${{ secrets.QUOTES_API_KEY }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
           REDIS_CONNECTION_URL: ${{secrets.REDIS_CONNECTION_URL}}
+          KAFKA_API_KEY: ${{secrets.KAFKA_API_KEY}}
+          KAFKA_API_SECRET: ${{secrets.KAFKA_API_SECRET}}
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=adityamathur456_journalapp

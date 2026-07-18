@@ -3,21 +3,24 @@ package com.springboot.journalapp.scheduler;
 import com.springboot.journalapp.entity.JournalEntry;
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.enums.Sentiment;
+import com.springboot.journalapp.model.SentimentData;
 import com.springboot.journalapp.service.EmailService;
 import com.springboot.journalapp.service.UserRepositoryCriteria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +31,9 @@ class UserSchedulerTest {
 
     @Mock
     private UserRepositoryCriteria userRepositoryCriteria;
+
+    @Mock
+    private KafkaTemplate<String, SentimentData> kafkaTemplate;
 
     @InjectMocks
     private UserScheduler userScheduler;
@@ -41,7 +47,7 @@ class UserSchedulerTest {
     }
 
     @Test
-    void fetchUserAndSendSentimentAnalysisMail_ShouldSendMail_WhenRecentSentimentsExist() {
+    void fetchUserAndSendSentimentAnalysisMail_ShouldSendKafkaMessage_WhenRecentSentimentsExist() {
 
         JournalEntry entry = new JournalEntry();
         entry.setDate(LocalDateTime.now().minusDays(2));
@@ -54,11 +60,22 @@ class UserSchedulerTest {
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
         verify(userRepositoryCriteria).getUserForSA();
-        verify(emailService).sendEmail(
-                "test@test.com",
-                "Sentiment for last 7 days",
-                "HAPPY"
+
+        ArgumentCaptor<SentimentData> captor =
+                ArgumentCaptor.forClass(SentimentData.class);
+
+        verify(kafkaTemplate).send(
+                eq("weekly-sentiments"),
+                eq("test@test.com"),
+                captor.capture()
         );
+
+        SentimentData data = captor.getValue();
+
+        assertEquals("test@test.com", data.getEmail());
+        assertEquals("Sentiment for last 7 daysHAPPY", data.getSentiment());
+
+        verifyNoInteractions(emailService);
     }
 
     @Test
@@ -74,6 +91,7 @@ class UserSchedulerTest {
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
+        verifyNoInteractions(kafkaTemplate);
         verifyNoInteractions(emailService);
     }
 
@@ -102,11 +120,21 @@ class UserSchedulerTest {
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
-        verify(emailService).sendEmail(
-                "test@test.com",
-                "Sentiment for last 7 days",
-                "HAPPY"
+        ArgumentCaptor<SentimentData> captor =
+                ArgumentCaptor.forClass(SentimentData.class);
+
+        verify(kafkaTemplate).send(
+                eq("weekly-sentiments"),
+                eq("test@test.com"),
+                captor.capture()
         );
+
+        assertEquals(
+                "Sentiment for last 7 daysHAPPY",
+                captor.getValue().getSentiment()
+        );
+
+        verifyNoInteractions(emailService);
     }
 
     @Test
@@ -118,6 +146,7 @@ class UserSchedulerTest {
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
         verify(userRepositoryCriteria).getUserForSA();
+        verifyNoInteractions(kafkaTemplate);
         verifyNoInteractions(emailService);
     }
 
@@ -143,20 +172,22 @@ class UserSchedulerTest {
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
-        verify(emailService).sendEmail(
-                "test@test.com",
-                "Sentiment for last 7 days",
-                "HAPPY"
+        verify(kafkaTemplate).send(
+                eq("weekly-sentiments"),
+                eq("test@test.com"),
+                any(SentimentData.class)
         );
 
-        verify(emailService).sendEmail(
-                "second@test.com",
-                "Sentiment for last 7 days",
-                "SAD"
+        verify(kafkaTemplate).send(
+                eq("weekly-sentiments"),
+                eq("second@test.com"),
+                any(SentimentData.class)
         );
 
-        verify(emailService, times(2))
-                .sendEmail(anyString(), eq("Sentiment for last 7 days"), anyString());
+        verify(kafkaTemplate, times(2))
+                .send(eq("weekly-sentiments"), anyString(), any(SentimentData.class));
+
+        verifyNoInteractions(emailService);
     }
 
     @Test
@@ -173,6 +204,7 @@ class UserSchedulerTest {
 
         userScheduler.fetchUserAndSendSentimentAnalysisMail();
 
+        verifyNoInteractions(kafkaTemplate);
         verifyNoInteractions(emailService);
     }
 }
