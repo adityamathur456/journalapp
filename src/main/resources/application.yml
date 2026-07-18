@@ -1,6 +1,44 @@
 spring:
   application:
     name: journalApp
+  kafka:
+    bootstrap-servers: pkc-41p56.asia-south1.gcp.confluent.cloud:9092
+
+    properties:
+      security:
+        protocol: SASL_SSL
+
+      sasl:
+        mechanism: PLAIN
+        jaas:
+          config: >
+            org.apache.kafka.common.security.plain.PlainLoginModule required
+            username='${KAFKA_API_KEY}'
+            password='${KAFKA_API_SECRET}';
+
+      session:
+        timeout:
+          ms: 45000
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    consumer:
+      group-id: my-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        spring:
+          json:
+            trusted:
+              packages: com.springboot.journalapp.model
+            value:
+              default:
+                type: com.springboot.journalapp.model.SentimentData
+
   data:
     redis:
       url: ${REDIS_CONNECTION_URL}
@@ -24,3 +62,6 @@ spring:
 
 server:
   port: 8080
+
+client:
+  id: ccloud-springboot-client-d54db5e6-1c72-4dfe-b1e7-3bef59cca0e2
