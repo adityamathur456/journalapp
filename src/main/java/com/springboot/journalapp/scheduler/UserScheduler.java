@@ -29,8 +29,8 @@ public class UserScheduler {
         this.emailService = emailService;
     }
 
-//    @Scheduled(cron = "0 0 9 * * SUN")
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "0 0 9 * * SUN")
+//    @Scheduled(cron = "0 * * * * *")
     public void fetchUserAndSendSentimentAnalysisMail() {
         List<UserEntity> users = userRepositoryCriteria.getUserForSA();
         for (UserEntity user : users) {
