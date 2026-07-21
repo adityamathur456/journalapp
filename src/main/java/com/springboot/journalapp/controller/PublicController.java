@@ -1,10 +1,14 @@
 package com.springboot.journalapp.controller;
 
+import com.springboot.journalapp.dto.LoginRequest;
+import com.springboot.journalapp.dto.RegisterRequest;
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.service.UserDetailServiceImpl;
 import com.springboot.journalapp.service.UserService;
 import com.springboot.journalapp.util.JwtUtil;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,22 +41,41 @@ public class PublicController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserEntity> registerUser(@RequestBody UserEntity user) {
+    public ResponseEntity<UserEntity> registerUser(@Valid @RequestBody RegisterRequest request) {
+
+        UserEntity user = new UserEntity();
+        user.setUserName(request.getUserName());
+        user.setPassword(request.getPassword());
+        user.setEmail(request.getEmail());
+        user.setSentimentAnalysis(request.isSentimentAnalysis());
+
         return ResponseEntity.ok(userService.saveNewUser(user));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody UserEntity user) {
+    public ResponseEntity<String> loginUser(@Valid @RequestBody LoginRequest request) {
+
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(user.getUserName(), user.getPassword())
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUserName(),
+                            request.getPassword()
+                    )
             );
-            UserDetails userDetails = userDetailService.loadUserByUsername(user.getUserName());
+
+            UserDetails userDetails =
+                    userDetailService.loadUserByUsername(request.getUserName());
+
             String jwtToken = jwtUtil.generateToken(userDetails.getUsername());
+
             return ResponseEntity.ok(jwtToken);
+
         } catch (Exception e) {
-            log.error("Exception occured while createAuthenticationToken ", e);
-            return ResponseEntity.ok("Incorrect Username and password");
+            log.error("Exception occurred while creating authentication token", e);
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("Incorrect username or password");
         }
     }
 }
