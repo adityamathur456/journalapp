@@ -4,6 +4,7 @@ import com.springboot.journalapp.entity.JournalEntry;
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.enums.Sentiment;
 import com.springboot.journalapp.model.SentimentData;
+import com.springboot.journalapp.service.EmailService;
 import com.springboot.journalapp.service.UserRepositoryCriteria;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,11 +19,14 @@ import java.util.Map;
 public class UserScheduler {
     private final UserRepositoryCriteria userRepositoryCriteria;
 
+    private final EmailService emailService;
+
     private final KafkaTemplate<String, SentimentData> kafkaTemplate;
 
-    public UserScheduler(UserRepositoryCriteria userRepositoryCriteria, KafkaTemplate<String, SentimentData> kafkaTemplate) {
+    public UserScheduler(UserRepositoryCriteria userRepositoryCriteria, KafkaTemplate<String, SentimentData> kafkaTemplate, EmailService emailService) {
         this.userRepositoryCriteria = userRepositoryCriteria;
         this.kafkaTemplate = kafkaTemplate;
+        this.emailService = emailService;
     }
 
     @Scheduled(cron = "0 0 9 * * SUN")
@@ -53,7 +57,11 @@ public class UserScheduler {
 
            if (mostFrequentSentiment != null) {
                SentimentData sentimentData = SentimentData.builder().email(user.getEmail()).sentiment("Sentiment for last 7 days" + mostFrequentSentiment).build();
-               kafkaTemplate.send("weekly-sentiments", sentimentData.getEmail(), sentimentData);
+               try {
+                   kafkaTemplate.send("weekly-sentiments", sentimentData.getEmail(), sentimentData);
+               } catch (Exception e) {
+                   emailService.sendEmail(sentimentData.getEmail(), "weekly-sentiments", sentimentData.getSentiment());
+               }
            }
         }
     }

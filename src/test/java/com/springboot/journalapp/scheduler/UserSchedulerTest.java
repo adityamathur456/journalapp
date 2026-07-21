@@ -4,6 +4,7 @@ import com.springboot.journalapp.entity.JournalEntry;
 import com.springboot.journalapp.entity.UserEntity;
 import com.springboot.journalapp.enums.Sentiment;
 import com.springboot.journalapp.model.SentimentData;
+import com.springboot.journalapp.service.EmailService;
 import com.springboot.journalapp.service.UserRepositoryCriteria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,11 +30,14 @@ class UserSchedulerTest {
     @Mock
     private KafkaTemplate<String, SentimentData> kafkaTemplate;
 
+    @Mock
+    private EmailService emailService;
+
     private UserScheduler userScheduler;
 
     @BeforeEach
     void setUp() {
-        userScheduler = new UserScheduler(userRepositoryCriteria, kafkaTemplate);
+        userScheduler = new UserScheduler(userRepositoryCriteria, kafkaTemplate, emailService);
     }
 
     @Test

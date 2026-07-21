@@ -25,6 +25,7 @@ public class UserController {
         this.quotesService = quotesService;
     }
 
+
     @GetMapping
     public ResponseEntity<GreetingResponse> greetingUser() {
 
