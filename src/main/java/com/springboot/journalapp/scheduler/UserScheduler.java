@@ -6,6 +6,7 @@ import com.springboot.journalapp.enums.Sentiment;
 import com.springboot.journalapp.model.SentimentData;
 import com.springboot.journalapp.service.EmailService;
 import com.springboot.journalapp.service.UserRepositoryCriteria;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class UserScheduler {
     private final UserRepositoryCriteria userRepositoryCriteria;
 
@@ -68,9 +70,9 @@ public class UserScheduler {
                                            sentimentData.getSentiment()
                                    );
                                }
-                           });;
+                           });
                } catch (Exception e) {
-                   e.printStackTrace();
+                   log.error("Error while processing weekly sentiment email", e);
                }
            }
         }
