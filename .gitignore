@@ -1,39 +1,48 @@
-HELP.md
+# Maven
 target/
 .mvn/wrapper/maven-wrapper.jar
+
+# Keep nested target directories ignored
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+# Logs
 *.log
-### STS ###
+
+# STS / Eclipse
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
+.sts4-cache/
 
-### IntelliJ IDEA ###
-.idea
+# IntelliJ IDEA
+.idea/
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
+
+# Gradle
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
+# VS Code
 .vscode/
 
-### environment
+# Environment variables / secrets
 .env
+.env.*
+!.env.example
 
-### README
+# README
 README-old.md
