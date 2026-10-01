@@ -5,17 +5,18 @@ services:
     container_name: kafka-container
 
     ports:
-      - "9092:9092"
+      - "9092:9092"   # for tools running on your PC (localhost:9092)
 
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
 
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
 
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # EXTERNAL = your PC, INTERNAL = other containers (like journalapp)
+      KAFKA_LISTENERS: EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9092,INTERNAL://kafka:19092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
 
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
@@ -31,5 +32,22 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
 
+  journalapp:
+    build: .
+    container_name: journalapp
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Overrides the default localhost:9092 so the app reaches Kafka over the Docker network
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    volumes:
+      - journalapp-logs:/app/tlogs
+    restart: unless-stopped
+
 volumes:
   kafka-data:
+  journalapp-logs:

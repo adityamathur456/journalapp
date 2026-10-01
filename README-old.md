@@ -27,36 +27,36 @@ A production-ready **Journal Management REST API** built with **Spring Boot 3**,
 - **Email notifications** – sent through Spring Mail
 - **Request validation** – Bean Validation on incoming payloads
 - **Testing** – unit tests with JUnit 5 and Mockito, plus integration tests
-- **Code quality** – JaCoCo coverage reports analysed by SonarCloud
+- **Code quality** – JaCoCo coverage reports analysed by SonarQube / SonarCloud
 - **CI** – GitHub Actions workflows for build, test and analysis
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer            | Technology                                 |
-| ---------------- |--------------------------------------------|
-| Language         | Java 21                                    |
-| Framework        | Spring Boot 3.5.15 (Web, Validation, Mail) |
-| Database         | MongoDB Atlas (Spring Data MongoDB )       |
-| Security         | Spring Security, JWT (`jjwt` 0.12.5)       |
-| Caching          | Redis (Spring Data Redis)                  |
-| Messaging        | Apache Kafka (Spring for Apache Kafka)     |
-| Build tool       | Maven (with Maven Wrapper)                 |
-| Boilerplate      | Lombok                                     |
-| Testing          | JUnit 5, Mockito                           |
-| Code quality     | JaCoCo, SonarCloud                         |
-| CI/CD            | GitHub Actions                             |
-| Containers       | Docker, Docker Compose (app + Kafka)       |
+| Layer            | Technology                                   |
+| ---------------- | -------------------------------------------- |
+| Language         | Java 21                                      |
+| Framework        | Spring Boot 3.5.15                           |
+| Database         | MongoDB Atlas (Spring Data MongoDB)          |
+| Security         | Spring Security, JWT (`jjwt` 0.12.5)         |
+| Caching          | Redis (Spring Data Redis)                    |
+| Messaging        | Apache Kafka (Spring for Apache Kafka)       |
+| Build tool       | Maven (with Maven Wrapper)                   |
+| Boilerplate      | Lombok                                       |
+| Testing          | JUnit 5, Mockito                             |
+| Code quality     | JaCoCo, SonarCloud                           |
+| CI/CD            | GitHub Actions                               |
+| Containers       | Docker Compose (Kafka)                       |
 
 ---
 
 ## 🏗️ Architecture
-
+ 
 The application has two independent flows: a synchronous **request path** for API calls and an asynchronous **sentiment workflow** driven by Kafka.
-
+ 
 ### 1. Request path
-
+ 
 ```mermaid
 flowchart TB
     Client([Client]) -->|HTTP + Bearer JWT| Sec["Security filter chain<br/>JWT validation + RBAC"]
@@ -64,24 +64,23 @@ flowchart TB
     Ctrl --> Svc[Services]
     Svc --> Repo[Repositories]
     Repo --> DB[(MongoDB Atlas)]
-
+ 
     Svc <-->|read / write weather| Cache[(Redis)]
     Svc -->|on cache miss| Weather[[Weather API]]
 ```
-
+ 
 1. The client sends a request with a `Bearer` JWT. The security filter chain validates the token and checks the user's role (`USER` or `ADMIN`) before the request reaches a controller.
 2. Controllers handle HTTP and validation, services hold the business logic, and repositories talk to MongoDB.
 3. Weather data is cached in Redis. See the sequence below for exactly how the cache behaves.
-
 #### Weather caching (greeting API)
-
+ 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Greeting API
     participant R as Redis
     participant W as Weather API
-
+ 
     C->>S: Request greeting
     S->>R: Look up weather
     alt Cache miss (first call, or after the 20 min TTL expired)
@@ -94,13 +93,12 @@ sequenceDiagram
     end
     S-->>C: Greeting + weather
 ```
-
+ 
 - **First call:** nothing is cached, so the weather API is called, the response is stored in Redis and returned to the user.
 - **Within 20 minutes:** the response is served straight from Redis and the weather API is not called.
 - **After 20 minutes:** Redis automatically deletes the expired entry, so the next call is a cache miss. The weather API is called again, the fresh response is stored, and it is returned to the user.
-
 ### 2. Asynchronous sentiment workflow
-
+ 
 ```mermaid
 flowchart LR
     DB[(MongoDB Atlas)] -->|last 7 days of entries| Job[Scheduled job]
@@ -110,19 +108,24 @@ flowchart LR
     Cons --> Mail[Mail service]
     Mail --> SMTP[[SMTP server]]
 ```
-
+ 
 1. A scheduled job collects each user's journal entries from roughly the last 7 days.
 2. The result is published as an event to the `weekly-sentiments` Kafka topic.
 3. A consumer picks up the event and the mail service emails the sentiment summary through SMTP, keeping this slow work off the request path.
+---
+
+The codebase is organised in layers (controller → service → repository) so that web, business and persistence concerns stay separate and are easy to test in isolation.
 
 ---
 
 ## 📋 Prerequisites
 
-- **Docker & Docker Compose** – to run the full stack (recommended)
-- A **MongoDB** database (MongoDB Atlas) and a **Redis** instance you can connect to
-- An SMTP account for outgoing email (for Gmail, use an App Password)
-- To run without Docker: **JDK 21** and **Maven 3.9+** (or the bundled `./mvnw`)
+- **JDK 21**
+- **Maven 3.9.15 (or use the bundled `./mvnw`)
+- **MongoDB** – MongoDB Atlas cluster
+- **Redis** – free tier 30mb
+- **Docker & Docker Compose** – to run Kafka locally
+- An SMTP account for outgoing email (e.g. Gmail app password)
 
 ---
 
@@ -135,46 +138,19 @@ git clone https://github.com/adityamathur456/journalapp.git
 cd journalapp
 ```
 
-### 2. Configure environment variables
+### 2. Start Kafka
 
-Copy the example file and fill in your real values:
-
-```bash
-cp .env.example .env        # Windows: copy .env.example .env
-```
-
-| Variable               | Description                                  |
-| ---------------------- | -------------------------------------------- |
-| `MONGODB_URI`          | MongoDB Atlas connection string              |
-| `REDIS_CONNECTION_URL` | Redis connection URL (weather cache)         |
-| `JWT_SECRET`           | Long random secret used to sign JWTs         |
-| `EMAIL`                | Email address used to send sentiment mails   |
-| `WEATHER_API_KEY`      | Weather API key                              |
-| `QUOTES_API_KEY`       | Quotes API key                               |
-
-> **Never commit `.env`.** It is listed in `.gitignore`; only `.env.example` belongs in the repository.
->
-> If a value contains a `$` (for example in a password or secret), write it as `$$` in `.env`. Docker Compose treats a single `$name` as a variable and would silently replace it.
-
-### 3. Run with Docker Compose (recommended)
-
-The `docker-compose.yml` starts two services on one Docker network:
-
-- **kafka** – a single-node Kafka 4.0.1 broker in KRaft mode (no ZooKeeper), 3 default partitions
-- **journalapp** – the Spring Boot application, built from the `Dockerfile`
+The repository ships a `docker-compose.yml` that runs a single-node Kafka 4.0.1 broker in KRaft mode (no ZooKeeper) with 3 default partitions.
 
 ```bash
-docker compose up -d --build
-docker compose logs -f journalapp
+docker compose up -d
 ```
 
-The API is then available at `http://localhost:8080`.
-
-Kafka exposes two addresses: `kafka:19092` for containers on the Docker network (used by the app) and `localhost:9092` for tools running on your machine.
+Kafka is then reachable at `localhost:9092`.
 
 #### Create the Kafka topic
 
-The sentiment-analysis workflow uses the `weekly-sentiments` topic. Create it once; it is kept in the `kafka-data` volume afterwards.
+The sentiment-analysis workflow publishes to the `weekly-sentiments` topic. Create it inside the running container:
 
 ```bash
 docker exec -it kafka-container /opt/kafka/bin/kafka-topics.sh --create \
@@ -194,25 +170,39 @@ docker exec -it kafka-container /opt/kafka/bin/kafka-topics.sh --describe \
 
 The output should show `PartitionCount: 3` and `ReplicationFactor: 1`.
 
-#### Useful commands
+### 3. Configure the application
 
-```bash
-docker compose logs -f journalapp   # follow application logs
-docker compose up -d --build        # rebuild and restart after code changes
-docker compose down                 # stop and remove containers (data is kept)
-docker compose down -v              # also delete volumes (Kafka data and topics)
+Set your MongoDB, Redis, Kafka, mail and JWT settings in `src/main/resources/application.yml` (or `application.properties`). Keep secrets out of version control by using environment variables.
+
+```yaml
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: localhost:9092
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
 ```
 
-### 4. Run the app locally (without Docker for the app)
+You will also need to supply a JWT signing secret and, if applicable, your weather API key, using the property names defined in your configuration.
 
-Start only Kafka in Docker, set the environment variables from `.env` in your shell or IDE, then run the app:
+### 4. Build and run
 
 ```bash
-docker compose up -d kafka
+./mvnw clean install
 ./mvnw spring-boot:run
 ```
 
-On Windows use `mvnw.cmd` instead of `./mvnw`. The app connects to Kafka at `localhost:9092` by default.
+On Windows use `mvnw.cmd` instead of `./mvnw`.
+
+The API starts on `http://localhost:8080` by default.
 
 ---
 
@@ -255,7 +245,7 @@ Authorization: Bearer <your-jwt-token>
 ## 🔄 Caching & Messaging
 
 ### Redis
-Responses from the external weather API are cached in Redis with a **20-minute TTL**. Requests inside that window are served from cache instead of hitting the third-party API. Once the TTL expires, Redis removes the entry, the next request is a cache miss, and the API is called again and its response is cached afresh.
+Responses from the external weather API are cached in Redis with a **20-minute TTL**, so repeated requests inside that window are served from cache instead of hitting the third-party API.
 
 ### Kafka
 Sentiment analysis runs as an asynchronous, event-driven workflow. A producer publishes the user's recent journal entries (about the last 7 days) to a Kafka topic, and a consumer processes them and sends the resulting sentiment summary by email. This keeps slow work off the request path.
@@ -285,28 +275,18 @@ GitHub Actions workflows (in `.github/workflows`) build the project, run the tes
 
 ## ☁️ Deployment
 
-The application is deployed on a **Google Cloud Platform VM**. With Docker installed on the VM, copy the project there, create the `.env` file on the server and run:
-
-```bash
-docker compose up -d --build
-```
-
-Without Docker, package the jar and run it directly:
+The application is deployed on a **Google Cloud Platform VM**. Package it with:
 
 ```bash
 ./mvnw clean package -DskipTests
 java -jar target/journalapp-0.0.1-SNAPSHOT.jar
 ```
 
-Provide secrets (MongoDB URI, JWT secret, API keys) through environment variables or the server-side `.env` file, never in the repository.
+Provide secrets (MongoDB URI, mail credentials, JWT secret, API keys) through environment variables on the server or local user variables in desktop, never in the repository.
 
 ---
 
-## 🤝 Contributing 
-
-- [ ] OpenAPI / Swagger documentation
-- [ ] Refresh-token support
-- [ ] Pagination and search for journal entries
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
