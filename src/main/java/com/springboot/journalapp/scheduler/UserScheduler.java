@@ -29,8 +29,8 @@ public class UserScheduler {
         this.emailService = emailService;
     }
 
-    @Scheduled(cron = "0 0 9 * * SUN")
-//    @Scheduled(cron = "0 * * * * *")
+//    @Scheduled(cron = "0 0 9 * * SUN") // This cron sends emails in weekly
+    @Scheduled(cron = "0 * * * * *") // This cron sends emails in 1 minute i used it for kafka testing.
     public void fetchUserAndSendSentimentAnalysisMail() {
         List<UserEntity> users = userRepositoryCriteria.getUserForSA();
         for (UserEntity user : users) {
@@ -58,9 +58,19 @@ public class UserScheduler {
            if (mostFrequentSentiment != null) {
                SentimentData sentimentData = SentimentData.builder().email(user.getEmail()).sentiment("Sentiment for last 7 days" + mostFrequentSentiment).build();
                try {
-                   kafkaTemplate.send("weekly-sentiments", sentimentData.getEmail(), sentimentData);
+                   kafkaTemplate
+                           .send("weekly-sentiments", sentimentData.getEmail(), sentimentData)
+                           .whenComplete((result, exception) -> {
+                               if (exception != null) {
+                                   emailService.sendEmail(
+                                           sentimentData.getEmail(),
+                                           "weekly-sentiments",
+                                           sentimentData.getSentiment()
+                                   );
+                               }
+                           });;
                } catch (Exception e) {
-                   emailService.sendEmail(sentimentData.getEmail(), "weekly-sentiments", sentimentData.getSentiment());
+                   e.printStackTrace();
                }
            }
         }
