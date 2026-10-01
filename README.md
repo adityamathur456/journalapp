@@ -44,7 +44,7 @@ A production-ready **Journal Management REST API** built with **Spring Boot 3**,
 | Messaging        | Apache Kafka (Spring for Apache Kafka)     |
 | Build tool       | Maven (with Maven Wrapper)                 |
 | Boilerplate      | Lombok                                     |
-| Testing          | JUnit 5, Mockito                           |
+| Testing          | JUnit 5, Mockito and Integeration Testing  |
 | Code quality     | JaCoCo, SonarCloud                         |
 | CI/CD            | GitHub Actions                             |
 | Containers       | Docker, Docker Compose (app + Kafka)       |
